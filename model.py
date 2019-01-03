@@ -1,5 +1,38 @@
 import math, random
 
+class Faction:
+  def __init__(self, id, name): # Faction, number, string
+    self.id = id
+    self.name = name
+    self.groups = []
+
+class Group:
+  def __init__(self, id, faction): # Group, number, Faction
+    self.id = id
+    self.faction = faction
+    self.loc = None
+    self.units = []
+
+  def getDisplayName(self):
+    return 'group ' + str(self.id) + '(' + self.faction.name + ')'
+
+  def getLocation(self):
+    return self.loc
+  
+  def isDocked(self):
+    return self.loc.__class__ == Star
+
+  def setLocation(self, location):
+    if location.__class__ == Point:
+      if self.loc.__class__ == Star:
+        self.loc.undock(self)
+      self.loc = location
+    elif location.__class__ == Star:
+      location.dock(self)
+      self.loc = location
+    else:
+      raise AttributeError('Group location must be Point or Star, not ' + str(location.__class__))
+
 class Point:
   def __init__(self, x, y):
     self.x = x
@@ -48,15 +81,24 @@ class Point:
     return Point(t[0], t[1])
 
 class Star:
-  def __init__(self, p):
+  def __init__(self, id, p):
+    self.id = id
     self.name = None
     self.loc = p
+    self.docked = []
+
+  def dock(self, group):
+    self.docked.append(group)
+
+  def undock(self, group):
+    self.docked.remove(group)
 
   def setScreen(self, p):
     self.screen = p
 
 class StarMap:
-  def __init__(self):
+  def __init__(self, getId):
+    self.getId = getId
     self.stars = []
     self.starNames = [
       "Alderaan","Amon Shek","Anacreon","Aquaria","Ariel","Arrakis","Bellerophon","Betelgeuse","Caladan",
@@ -80,7 +122,7 @@ class StarMap:
           return False
       return True
 
-    count = 100
+    count = 10
     maxRetries = 5
     for star in range(0, count):
       p = pickPoint()
@@ -90,7 +132,7 @@ class StarMap:
         if retries > maxRetries:
           raise RuntimeError('maxRetries exceeded')
         p = pickPoint()
-      star = Star(p)
+      star = Star(self.getId(), p)
       star.name = self.genStarName()
       self.stars.append(star)
 
@@ -144,20 +186,22 @@ class StarMap:
     name = getStart() + getMiddle() + getEnd()
     return name[0].upper() + name[1:]
 
-  def genRoundGrid(self):
-    wedges = 48
-    rings = 6
-    for ring in range(0, rings):
-      for wedge in range(0, wedges):
-        theta = math.pi * 2 / wedges * wedge
-        dist = 1 / rings * (ring + 1)
-        x = dist * math.cos(theta)
-        y = dist * math.sin(theta)
-        star = Star(Point(x,y))
-        self.stars.append(star)
-
 class Model:
   def __init__(self):
-    self.starMap = StarMap()
-    # self.starMap.genRoundGrid()
+    self.lastId = 0
+    self.starMap = StarMap(self.getId)
     self.starMap.genRandPolar()
+    self.factions = []
+    self.initFactions()
+
+  def initFactions(self):
+    self.factions.append(Faction(self.getId(), "them"))
+    f = Faction(self.getId(), "us")
+    self.factions.append(f)
+    g = Group(self.getId(), f)
+    f.groups.append(g)
+    g.setLocation(self.starMap.stars[0])
+
+  def getId(self):
+    self.lastId += 1
+    return self.lastId

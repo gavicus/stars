@@ -24,7 +24,7 @@ class Page:
   starDetail = 1
 
 class View:
-  def __init__(self):
+  def __init__(self, model):
     pygame.font.init()
 
     # temporary
@@ -33,7 +33,7 @@ class View:
     import os
     os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (x,y)
 
-    self.starMap = None
+    self.model = model
     self.screenSize = Point(300,200)
     self.screen = pygame.display.set_mode(self.screenSize.tuple())
     self.starMapShift = Point(self.screenSize.x//2, self.screenSize.y//2)
@@ -43,28 +43,27 @@ class View:
     self.zoomIncrement = 10
     self.currentPage = Page.stars
 
-  def draw(self, starMap):
-    if starMap:
-      self.starMap = starMap
+  def draw(self):
     if self.currentPage == Page.stars:
       self.screen.fill(Theme.void)
-      self.drawStars(starMap)
+      self.drawStars()
     elif self.currentPage == Page.starDetail:
       self.screen.fill(Theme.detailBackground)
       self.drawStarDetail(self.selectedStar)
 
     pygame.display.update()
 
-  def drawStars(self, starMap):
-    for star in starMap.stars:
+  def drawStars(self):
+    for star in self.model.starMap.stars:
       self.setScreenLoc(star)
 
     if self.hoveredStar:
       pygame.draw.circle(self.screen, Theme.hoveredBack, self.hoveredStar.screen.tuple(), 8)
 
-    for star in starMap.stars:
+    for star in self.model.starMap.stars:
+      radius = 0 if len(star.docked) == 0 else 1
       color = Theme.hoveredStar if star == self.hoveredStar else Theme.star
-      pygame.draw.circle(self.screen, color, star.screen.tuple(), 0)
+      pygame.draw.circle(self.screen, color, star.screen.tuple(), radius)
 
   def drawStarDetail(self, star):
     margin = 10
@@ -74,6 +73,14 @@ class View:
     self.drawText(roundLoc.string(), cursor.tuple(), Theme.detailText)
     cursor.y += lineHeight
     self.drawText(star.name, cursor.tuple(), Theme.detailText)
+    if len(star.docked) > 0:
+      cursor.y += lineHeight
+      self.drawText('groups:', cursor.tuple(), Theme.detailText)
+      cursor.x += margin
+      for group in star.docked:
+        cursor.y += lineHeight
+        self.drawText(group.getDisplayName(), cursor.tuple(), Theme.detailText)
+      cursor.x -= margin
 
   def drawText(self, text, pos, color):
     myfont = pygame.font.SysFont('microsoftsansserif', 12)
@@ -85,18 +92,18 @@ class View:
       if self.hoveredStar:
         self.selectedStar = self.hoveredStar
         self.currentPage = Page.starDetail
-        self.draw(None)
+        self.draw()
     elif self.currentPage == Page.starDetail:
         self.currentPage = Page.stars
-        self.draw(self.starMap)
+        self.draw()
 
-  def onMouseMove(self, position, starMap):
+  def onMouseMove(self, position):
     if self.currentPage == Page.stars:
       point = Point.fromTuple(position)
       hovered = None
       dist = 0
       minDist = 10
-      for star in starMap.stars:
+      for star in self.model.starMap.stars:
         d = point.squareDist(star.screen)
         if d < minDist ** 2:
           if not hovered or d < dist:
@@ -105,7 +112,7 @@ class View:
       changed = (hovered != self.hoveredStar)
       self.hoveredStar = hovered
       if changed:
-        self.draw(starMap)
+        self.draw()
 
   def setScreenLoc(self, star):
     screen = Point(
@@ -114,9 +121,9 @@ class View:
     )
     star.setScreen(screen)
 
-  def shiftFocus(self, delta, starMap):
+  def shiftFocus(self, delta):
     self.starMapShift = self.starMapShift.add(delta)
-    self.draw(starMap)
+    self.draw()
 
   def getZoomShiftChange(self):
     center = Point(self.screenSize.x//2, self.screenSize.y//2)
@@ -125,14 +132,14 @@ class View:
     shiftChange = normal.multiply(self.zoomIncrement/2)
     return shiftChange.floor()
     
-  def zoomIn(self, starMap):
+  def zoomIn(self):
     self.starMapScale += self.zoomIncrement
     self.starMapShift = self.starMapShift.add(self.getZoomShiftChange())
-    self.draw(starMap)
+    self.draw()
 
-  def zoomOut(self, starMap):
+  def zoomOut(self):
     minScale = 50
     if self.starMapScale > minScale:
       self.starMapScale -= self.zoomIncrement
     self.starMapShift = self.starMapShift.subtract(self.getZoomShiftChange())
-    self.draw(starMap)
+    self.draw()

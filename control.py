@@ -4,8 +4,8 @@ import view, model
 class Control:
   def __init__(self):
     self.model = model.Model()
-    self.view = view.View()
-    self.view.draw(self.model.starMap)
+    self.view = view.View(self.model)
+    self.view.draw()
     self.mouseButtons = [None,0,0,0,0,0]
     self.mouseLast = [None,0,0,0,0,0]
     self.loop()
@@ -29,9 +29,9 @@ class Control:
           quit()
         elif event.type == pygame.MOUSEBUTTONDOWN:
           if button == 4:
-            self.view.zoomIn(self.model.starMap)
+            self.view.zoomIn()
           if button == 5:
-            self.view.zoomOut(self.model.starMap)
+            self.view.zoomOut()
           else:
             drag = False
             button = event.button
@@ -55,10 +55,10 @@ class Control:
     self.view.onClick(button)
 
   def onMouseMove(self, position):
-    self.view.onMouseMove(position, self.model.starMap)
+    self.view.onMouseMove(position)
 
   def shiftFocus(self, delta):
-    self.view.shiftFocus(delta, self.model.starMap)
+    self.view.shiftFocus(delta)
 
 
 if __name__ == '__main__':
