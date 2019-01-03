@@ -11,6 +11,21 @@ class Point:
   def collides(self, p, minDist):
     return self.squareDist(p) <= minDist ** 2
 
+  def floor(self):
+    return Point(math.floor(self.x), math.floor(self.y))
+
+  def magnitude(self):
+    return math.sqrt(self.x**2 + self.y**2)
+
+  def multiply(self, m):
+    return Point(self.x*m, self.y*m)
+
+  def normal(self):
+    mag = self.magnitude()
+    if mag == 0:
+      return Point(0,0)
+    return Point(self.x / mag, self.y / mag)
+
   def squareDist(self, p):
     dx2 = (p.x - self.x) ** 2
     dy2 = (p.y - self.y) ** 2

@@ -31,6 +31,7 @@ class View:
     self.starMapShift = Point(self.screenSize.x//2, self.screenSize.y//2)
     self.starMapScale = 150
     self.hoveredStar = None
+    self.zoomIncrement = 10
 
   def draw(self, starMap):
     self.screen.fill(Theme.void)
@@ -79,12 +80,21 @@ class View:
     self.starMapShift = self.starMapShift.add(delta)
     self.draw(starMap)
 
+  def getZoomShiftChange(self):
+    center = Point(self.screenSize.x//2, self.screenSize.y//2)
+    vector = self.starMapShift.subtract(center)
+    normal = vector.normal()
+    shiftChange = normal.multiply(self.zoomIncrement/2)
+    return shiftChange.floor()
+    
   def zoomIn(self, starMap):
-    self.starMapScale += 10
+    self.starMapScale += self.zoomIncrement
+    self.starMapShift = self.starMapShift.add(self.getZoomShiftChange())
     self.draw(starMap)
 
   def zoomOut(self, starMap):
     minScale = 50
     if self.starMapScale > minScale:
-      self.starMapScale -= 10
-      self.draw(starMap)
+      self.starMapScale -= self.zoomIncrement
+    self.starMapShift = self.starMapShift.subtract(self.getZoomShiftChange())
+    self.draw(starMap)
