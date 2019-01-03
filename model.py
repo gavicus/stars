@@ -26,10 +26,16 @@ class Point:
       return Point(0,0)
     return Point(self.x / mag, self.y / mag)
 
+  def round(self, digits):
+    return Point(round(self.x, digits), round(self.y, digits))
+
   def squareDist(self, p):
     dx2 = (p.x - self.x) ** 2
     dy2 = (p.y - self.y) ** 2
     return dx2 + dy2
+
+  def string(self):
+    return "(" + str(self.x) + ", " + str(self.y) + ")"
 
   def subtract(self, p):
     return Point(self.x - p.x, self.y - p.y)
@@ -43,6 +49,7 @@ class Point:
 
 class Star:
   def __init__(self, p):
+    self.name = None
     self.loc = p
 
   def setScreen(self, p):
@@ -51,6 +58,14 @@ class Star:
 class StarMap:
   def __init__(self):
     self.stars = []
+    self.starNames = [
+      "Alderaan","Amon Shek","Anacreon","Aquaria","Ariel","Arrakis","Bellerophon","Betelgeuse","Caladan",
+      "Capella","Caprica","Coruscant","Dantooine","Eridani","Fomalhaut",
+      "Gemenon","Giedi Prime","Gliese","Haven","Iota","Ix","Jakku","Jiangyin","Kobol",
+      "Lambda","Mintaka","Miranda","Pegasus","Persephone","Romulus","Salusa Secundus","Tatooine",
+      "Vulcan","Whitefall",
+    ]
+    self.nameIndex = 0
 
   def genRandPolar(self):
     def pickPoint():
@@ -65,7 +80,7 @@ class StarMap:
           return False
       return True
 
-    count = 200
+    count = 100
     maxRetries = 5
     for star in range(0, count):
       p = pickPoint()
@@ -76,7 +91,58 @@ class StarMap:
           raise RuntimeError('maxRetries exceeded')
         p = pickPoint()
       star = Star(p)
+      star.name = self.genStarName()
       self.stars.append(star)
+
+  def genStarName(self):
+    if self.nameIndex < len(self.starNames):
+      self.nameIndex += 1
+      return self.starNames[self.nameIndex-1]
+    else:
+      return self.randomName()
+
+  def randomName(self):
+    cs = "bcdfghjklmnpqrstvwxz"
+    ccs = ["ch","sh","th","ck"]
+    vs = "aeiouy"
+    vvs = ["ea","ae","oo","ow"]
+    def getConsonant():
+      roll = random.randint(1,len(cs)+len(ccs))
+      if roll < len(ccs):
+        return ccs[random.randint(0,len(ccs)-1)]
+      return cs[random.randint(0,len(cs)-1)]
+    def getVowel():
+      roll = random.randint(1,len(vs)+len(vvs))
+      if roll < len(vvs):
+        return vvs[random.randint(0,len(vvs)-1)]
+      return vs[random.randint(0,len(vs)-1)]
+    def getStart():
+      start = ""
+      roll = random.randint(1,4)
+      if roll > 1:
+        start += getConsonant()
+      start += getVowel()
+      return start
+    def getEnd():
+      end = getConsonant()
+      roll = random.randint(1,2)
+      if roll > 1:
+        end += getVowel()
+      return end
+    def getSylable():
+      cons = getConsonant()
+      vow = getVowel()
+      return cons + vow
+    def getMiddle():
+      roll = random.randint(1,6)
+      if roll == 6:
+        return ""
+      elif roll > 3:
+        return getSylable() + getSylable()
+      else:
+        return getSylable()
+    name = getStart() + getMiddle() + getEnd()
+    return name[0].upper() + name[1:]
 
   def genRoundGrid(self):
     wedges = 48
