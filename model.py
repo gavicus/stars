@@ -6,6 +6,9 @@ class Faction:
     self.name = name
     self.groups = []
 
+  def getDisplayName(self):
+    return self.name + ' (' + str(self.id) + ')'
+
 class Group:
   def __init__(self, id, faction): # Group, number, Faction
     self.id = id
@@ -43,6 +46,9 @@ class Point:
   
   def collides(self, p, minDist):
     return self.squareDist(p) <= minDist ** 2
+
+  def copy(self):
+    return Point(self.x, self.y)
 
   def floor(self):
     return Point(math.floor(self.x), math.floor(self.y))
@@ -90,6 +96,9 @@ class Star:
   def dock(self, group):
     self.docked.append(group)
 
+  def getDisplayName(self):
+    return self.name + ' (' + str(self.id) + ')'
+
   def undock(self, group):
     self.docked.remove(group)
 
@@ -122,7 +131,7 @@ class StarMap:
           return False
       return True
 
-    count = 10
+    count = 100
     maxRetries = 5
     for star in range(0, count):
       p = pickPoint()
@@ -193,14 +202,23 @@ class Model:
     self.starMap.genRandPolar()
     self.factions = []
     self.initFactions()
+    self.currentFaction = self.factions[0]
+
+  def getObjectById(self, id):
+    for star in self.starMap.stars:
+      if star.id == id: return star
+    for faction in self.factions:
+      if faction.id == id: return faction
+      for group in faction.groups:
+        if group.id == id: return group
 
   def initFactions(self):
-    self.factions.append(Faction(self.getId(), "them"))
     f = Faction(self.getId(), "us")
     self.factions.append(f)
     g = Group(self.getId(), f)
     f.groups.append(g)
     g.setLocation(self.starMap.stars[0])
+    self.factions.append(Faction(self.getId(), "them"))
 
   def getId(self):
     self.lastId += 1
