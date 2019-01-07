@@ -4,7 +4,7 @@ import view, model
 class Control:
   def __init__(self):
     self.model = model.Model()
-    self.view = view.View(self.model)
+    self.view = view.View(self.model, self.viewCallback)
     self.view.draw()
     self.mouseButtons = [None,0,0,0,0,0]
     self.mouseLast = [None,0,0,0,0,0]
@@ -59,6 +59,9 @@ class Control:
 
   def shiftFocus(self, delta):
     self.view.shiftFocus(delta)
+
+  def viewCallback(self, data):
+    print('viewCallback', data)
 
 
 if __name__ == '__main__':

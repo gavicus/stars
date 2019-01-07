@@ -1,41 +1,5 @@
 import math, random
 
-class Faction:
-  def __init__(self, id, name): # Faction, number, string
-    self.id = id
-    self.name = name
-    self.groups = []
-
-  def getDisplayName(self):
-    return self.name + ' (' + str(self.id) + ')'
-
-class Group:
-  def __init__(self, id, faction): # Group, number, Faction
-    self.id = id
-    self.faction = faction
-    self.loc = None
-    self.units = []
-
-  def getDisplayName(self):
-    return 'group ' + str(self.id) + '(' + self.faction.name + ')'
-
-  def getLocation(self):
-    return self.loc
-  
-  def isDocked(self):
-    return self.loc.__class__ == Star
-
-  def setLocation(self, location):
-    if location.__class__ == Point:
-      if self.loc.__class__ == Star:
-        self.loc.undock(self)
-      self.loc = location
-    elif location.__class__ == Star:
-      location.dock(self)
-      self.loc = location
-    else:
-      raise AttributeError('Group location must be Point or Star, not ' + str(location.__class__))
-
 class Point:
   def __init__(self, x, y):
     self.x = x
@@ -86,11 +50,62 @@ class Point:
   def fromTuple(t):
     return Point(t[0], t[1])
 
+class Faction:
+  def __init__(self, id, name): # Faction, number, string
+    self.id = id
+    self.name = name
+    self.groups = []
+
+  def getDisplayName(self):
+    return self.name + ' (' + str(self.id) + ')'
+
+class Group:
+  def __init__(self, id, faction): # Group, number, Faction
+    self.id = id
+    self.faction = faction
+    self.loc = None
+    self.screen = None
+    self.destination = None
+    self.units = []
+
+  def getDisplayName(self):
+    return 'group ' + str(self.id) + '(' + self.faction.name + ')'
+
+  def getLocation(self):
+    return self.loc
+
+  def getMapLocation(self):
+    if self.isDocked():
+      return self.loc.loc
+    else:
+      return self.loc
+  
+  def getScreenLocation(self):
+    if self.isDocked():
+      return self.loc.screen
+    else:
+      return self.screen
+  
+  def isDocked(self):
+    return self.loc.__class__ == Star
+
+  def setLocation(self, location):
+    if location.__class__ == Point:
+      if self.loc.__class__ == Star:
+        self.loc.undock(self)
+      self.loc = location
+    elif location.__class__ == Star:
+      location.dock(self)
+      self.loc = location
+    else:
+      raise AttributeError('Group location must be Point or Star, not ' + str(location.__class__))
+
 class Star:
   def __init__(self, id, p):
     self.id = id
     self.name = None
     self.loc = p
+    self.screen = None
     self.docked = []
 
   def dock(self, group):

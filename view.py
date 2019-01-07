@@ -22,6 +22,8 @@ class Theme:
   detailText = Color.gray5
   sidebarBackground = Color.gray2
   buttonBackground = Color.black
+  selectDestinationLine = Color.gray5
+  destinationLine = Color.gray3
 
 class Page:
   stars = 0
@@ -53,8 +55,12 @@ class Button:
   def getCommandString(self):
     return self.commandString
 
+class CommandMode:
+  none = None
+  chooseDestination = 1
+
 class View:
-  def __init__(self, model):
+  def __init__(self, model, callback):
     pygame.font.init()
 
     # temporary
@@ -76,6 +82,10 @@ class View:
     self.currentPage = Page.stars
     self.buttons = []
     self.hoveredButton = None
+    self.callback = callback
+    self.commandMode = None
+    self.commandGroup = None
+    self.mouseLast = None
 
   def draw(self):
     if self.currentPage == Page.stars:
@@ -104,12 +114,49 @@ class View:
       else:
         pygame.draw.circle(self.screen, color, star.screen.tuple(), radius)
 
+    if self.commandMode == CommandMode.chooseDestination:
+      origin = self.commandGroup.getScreenLocation()
+      dest = self.mouseLast
+      if self.hoveredStar:
+        dest = self.hoveredStar.screen
+      if origin and dest:
+        pygame.draw.line(self.screen, Theme.selectDestinationLine, origin.tuple(), dest.tuple())
+
+    for faction in self.model.factions:
+      for group in faction.groups:
+        if group.destination:
+          dest = Point(0,0)
+          if group.destination.__class__ == Star:
+            dest = group.destination.screen
+          else:
+            dest = self.mapToScreenLoc(group.destination)
+          if group.isDocked():
+            groupScreen = group.loc.screen
+          else:
+            groupScreen = group.screen
+          pygame.draw.line(self.screen, Theme.destinationLine, groupScreen.tuple(), dest.tuple())
+
+
   def drawSidebar(self):
     pygame.draw.rect(
       self.screen, Theme.sidebarBackground,
       (self.mapSize.x, 0, self.screenSize.x-self.mapSize.x, self.mapSize.y)
     )
-    if self.focusObject: # selected object among many at one location
+    if self.commandMode == CommandMode.chooseDestination:
+      if self.hoveredStar:
+        margin = 10
+        lineHeight = 15
+        cursor = Point(self.mapSize.x + margin, margin)
+        roundLoc = self.hoveredStar.loc.round(2)
+        self.drawText(roundLoc.string(), cursor.tuple(), Theme.detailText)
+        cursor.y += lineHeight
+        self.drawText(self.hoveredStar.getDisplayName(), cursor.tuple(), Theme.detailText)
+        cursor.y += lineHeight
+        dist = math.sqrt(self.hoveredStar.loc.squareDist(self.commandGroup.getMapLocation()))
+        dist = round(dist, 2)
+        distLine = "distance: " + str(dist)
+        self.drawText(distLine, cursor.tuple(), Theme.detailText)
+    elif self.focusObject: # selected object among many at one location
       if self.focusObject.__class__ == Star:
         self.drawSidebarStar(self.focusObject)
       elif self.focusObject.__class__ == Group:
@@ -143,7 +190,6 @@ class View:
         self.buttons.append(Button(cursor.copy(), command, command + ":" + str(group.id)))
       for btn in self.buttons: btn.draw(self.screen)
 
-
   def drawSidebarStar(self, star):
     margin = 10
     lineHeight = 15
@@ -175,10 +221,27 @@ class View:
     textsurface = myfont.render(text, False, color)
     self.screen.blit(textsurface, pos)
 
+  def findNearestStar(self, point, maxDist=10000):
+    if point.x > self.mapSize.x:
+      return None
+    hovered = None
+    dist = 0
+    for star in self.model.starMap.stars:
+      d = point.squareDist(star.screen)
+      if d < maxDist ** 2:
+        if not hovered or d < dist:
+          hovered = star
+          dist = d
+    return hovered
+
   def onButton(self, command, data):
     print("onButton",command,data)
     if command == 'focus':
       self.focusObject = self.model.getObjectById(int(data))
+      self.draw()
+    elif command == 'move group':
+      self.commandGroup = self.model.getObjectById(int(data))
+      self.commandMode = CommandMode.chooseDestination
       self.draw()
 
   def onClick(self, button):
@@ -187,6 +250,13 @@ class View:
       if self.hoveredButton:
         command, data = self.hoveredButton.getCommandString().split(':')
         self.onButton(command,data)
+      elif self.commandMode == CommandMode.chooseDestination:
+        if self.hoveredStar:
+          self.commandGroup.destination = self.hoveredStar
+        else:
+          self.commandGroup.destination = self.screenToMapLoc(self.mouseLast)
+        self.commandMode = CommandMode.none
+        self.draw()
       elif self.hoveredStar:
         self.selectedStar = self.hoveredStar
         self.draw()
@@ -198,8 +268,9 @@ class View:
       self.draw()
 
   def onMouseMove(self, position):
+    point = Point.fromTuple(position)
+    self.mouseLast = point
     if self.currentPage == Page.stars:
-      point = Point.fromTuple(position)
 
       # check buttons
       self.hoveredButton = None
@@ -208,30 +279,30 @@ class View:
           self.hoveredButton = button
           return
 
-      # check stars
-      if point.x > self.mapSize.x:
-        self.hoveredStar = None
-        return
-      hovered = None
-      dist = 0
-      minDist = 10
-      for star in self.model.starMap.stars:
-        d = point.squareDist(star.screen)
-        if d < minDist ** 2:
-          if not hovered or d < dist:
-            hovered = star
-            dist = d
+      hovered = self.findNearestStar(point, 10)
       changed = (hovered != self.hoveredStar)
       self.hoveredStar = hovered
+
+      if self.commandMode:
+        if self.commandMode == CommandMode.chooseDestination:
+          changed = True
+
       if changed:
         self.draw()
 
-  def setScreenLoc(self, star):
-    screen = Point(
-      math.floor(star.loc.x * self.starMapScale) + self.starMapShift.x,
-      math.floor(star.loc.y * self.starMapScale) + self.starMapShift.y
+  def screenToMapLoc(self, loc):
+    x = (loc.x - self.starMapShift.x) / self.starMapScale
+    y = (loc.y - self.starMapShift.y) / self.starMapScale
+    return Point(x,y)
+
+  def mapToScreenLoc(self, loc):
+    return Point(
+      math.floor(loc.x * self.starMapScale) + self.starMapShift.x,
+      math.floor(loc.y * self.starMapScale) + self.starMapShift.y
     )
-    star.setScreen(screen)
+
+  def setScreenLoc(self, star):
+    star.setScreen(self.mapToScreenLoc(star.loc))
 
   def shiftFocus(self, delta):
     self.starMapShift = self.starMapShift.add(delta)
