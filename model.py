@@ -65,7 +65,7 @@ class Group:
     self.faction = faction
     self.loc = None
     self.screen = None
-    self.destination = None
+    self.orders = None # {"order":"move", "data":<object>}
     self.units = []
 
   def getDisplayName(self):

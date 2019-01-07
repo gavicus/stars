@@ -124,18 +124,18 @@ class View:
 
     for faction in self.model.factions:
       for group in faction.groups:
-        if group.destination:
-          dest = Point(0,0)
-          if group.destination.__class__ == Star:
-            dest = group.destination.screen
-          else:
-            dest = self.mapToScreenLoc(group.destination)
-          if group.isDocked():
-            groupScreen = group.loc.screen
-          else:
-            groupScreen = group.screen
+        if group.orders:
+          if group.orders["order"] == "move":
+            dest = Point(0,0)
+            if group.orders["data"].__class__ == Star:
+              dest = group.orders["data"].screen
+            else:
+              dest = self.mapToScreenLoc(group.orders["data"])
+            if group.isDocked():
+              groupScreen = group.loc.screen
+            else:
+              groupScreen = group.screen
           pygame.draw.line(self.screen, Theme.destinationLine, groupScreen.tuple(), dest.tuple())
-
 
   def drawSidebar(self):
     pygame.draw.rect(
@@ -251,10 +251,11 @@ class View:
         command, data = self.hoveredButton.getCommandString().split(':')
         self.onButton(command,data)
       elif self.commandMode == CommandMode.chooseDestination:
+        self.commandGroup.orders = {"order":"move", "data":None}
         if self.hoveredStar:
-          self.commandGroup.destination = self.hoveredStar
+          self.commandGroup.orders["data"] = self.hoveredStar
         else:
-          self.commandGroup.destination = self.screenToMapLoc(self.mouseLast)
+          self.commandGroup.orders["data"] = self.screenToMapLoc(self.mouseLast)
         self.commandMode = CommandMode.none
         self.draw()
       elif self.hoveredStar:
